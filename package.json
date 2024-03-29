@@ -1,6 +1,6 @@
 {
     "name": "@ratmd/oc-translator",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "homepage": "https://github.com/RatMD/oc-translator",
     "description": "OctoberCMS Translator Tool, especially designed for OFFLINE.Mall.",
     "keywords": [
