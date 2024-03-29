@@ -109,8 +109,8 @@ if (config.mode != 'dev') {
 fastify.get('/', async (request, reply) => {
     let file = path.resolve(publicPath('index.html'));
     let content = (await fs.promises.readFile(file)).toString();
-    content = content.replace('{{ NAME }}', options.value.theme.name);
-    content = content.replace('{{ LOGO }}', '/assets/logo');
+    content = content.replace(/{{ NAME }}/g, options.value.theme.name);
+    content = content.replace(/{{ LOGO }}/g, '/assets/logo');
 
     reply.status(200).type('text/html').send(content);
 });
