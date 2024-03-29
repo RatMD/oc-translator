@@ -52,7 +52,14 @@ function publicPath(pathname: string = '/') {
         let publicPath = path.resolve(process.cwd(), 'src/client');
         return path.join(publicPath, pathname);
     } else {
-        let publicPath = path.resolve(path.dirname(process.argv[1]), 'public');
+        let executePath = process.argv[1];
+        if (executePath.endsWith(`bin${path.sep}translator.js`)) {
+            executePath = path.join(path.dirname(path.dirname(executePath)), 'dist');
+        } else {
+            executePath = path.dirname(executePath);
+        }
+
+        let publicPath = path.resolve(executePath, 'public');
         return path.join(publicPath, pathname);
     }
 }
