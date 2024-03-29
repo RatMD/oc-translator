@@ -4,36 +4,132 @@ import path from 'node:path';
 import cp from 'node:child_process';
 import glob from 'fast-glob';
 
-class Localizer {
+export interface LocalizerOptions {
+    /**
+     * The root working directory used by the Localizer tool.
+     */
+    root: string;
 
     /**
-     * Localizer instance
+     * The default locale string, used to compar withe.
      */
-    static instance = null;
+    defaultLocale: string;
+
+    /**
+     * The namespace used to identify and extract locale strings ('<group>.<plugin>').
+     */
+    namespace: string;
+
+    /**
+     * The directory where the individual language files can be found.
+     */
+    localeDir: string;
+
+    /**
+     * Glob patterns of the folders and files to be searched for the locale strings.
+     */
+    files: string[];
+}
+
+export type FlatLocaleIndex = { [key: string]: string; };
+export type FlatLocaleFileIndex = { [file: string]: FlatLocaleIndex; };
+
+export type LocaleIndex = { [key: string]: string | LocaleIndex; };
+export type LocaleFileIndex = { [file: string]: LocaleIndex; };
+export type LocaleStringsIndex = { default: LocaleFileIndex, [locale: string]: LocaleFileIndex };
+
+export interface SourceChunk {
+    locale: {
+        file: string;
+        path: string;
+        full: string;
+    },
+    source: string;
+    line: number;
+    col: number;
+    index: number;
+    excerpt: string;
+    excerptFocus: number[];
+}
+export type SourceIndex = { [string: string]: SourceChunk[] };
+
+class Localizer {
+    /**
+     * Localizer Instance.
+     */
+    private static instance: Localizer|null = null;
 
     /**
      * Check if localizer has an instance.
      * @returns 
      */
-    static hasInstance() {
+    public static hasInstance(): boolean {
         return this.instance != null;
     }
 
     /**
-     * Create a new Localizer class
-     * @param {string} root
-     * @param {string} defaultLocale
+     * Check if localizer has an instance.
+     * @returns 
      */
-    constructor(root, defaultLocale ='en') {
+    public static getInstance(): Localizer {
+        if (this.instance == null) {
+            throw new Error('The Localizer class has not been initialized yet.');
+        }
+        return this.instance;
+    }
+
+    /**
+     * Instance Options
+     */
+    public options: LocalizerOptions;
+
+    /**
+     * The resolved root directory.
+     */
+    public root: string;
+    
+    /**
+     * The resolved root languages.
+     */
+    public lang: string;
+
+    /**
+     * The scanned / available locales.
+     */
+    public locales: string[];
+
+    /**
+     * The main strings index for all langauges.
+     */
+    public strings: LocaleStringsIndex;
+
+    /**
+     * The main file index for the default set language.
+     */
+    public index: FlatLocaleFileIndex;
+
+    /**
+     * The set of sources for each locale string.
+     */
+    public sources: SourceIndex;
+
+    /**
+     * Create a new Localizer class
+     * @param {object} options
+     */
+    constructor(options: LocalizerOptions) {
         if (Localizer.hasInstance()) {
             throw new Error('The Localizer class cannot be instantiated twice.');
         }
         Localizer.instance = this;
 
-        this.root = path.resolve(root);
-        this.lang = path.join(this.root, 'lang');
+        // Set Options
+        this.options = options;
 
-        this.defaultLocale = defaultLocale;
+        // Set Paths
+        this.root = path.resolve(options.root);
+        this.lang = path.join(this.root, options.localeDir);
+
         this.locales = [];
 
         this.strings = {
@@ -45,11 +141,11 @@ class Localizer {
 
     /**
      * Get the difference from 2 flat translation objects.
-     * @param {[key: string]: string} source The object to compare from
-     * @param {[key: string]: string} target Object to compare against
-     * @return {[key: string]: string}
+     * @param {FlatLocaleIndex} source The object to compare from
+     * @param {FlatLocaleIndex} target Object to compare against
+     * @return {FlatLocaleIndex}
      */
-    diff(source, target) {
+    diff(source: FlatLocaleIndex, target: FlatLocaleIndex): FlatLocaleIndex {
         source = {...source};
         target = {...target};
 
@@ -75,13 +171,13 @@ class Localizer {
      */
     async readLocales() {
         const locales = (await fs.promises.readdir(this.lang)).filter(
-            locale => locale != this.defaultLocale
+            locale => locale != this.options.defaultLocale
         );
 
         // Read default locale files
-        const files = await fs.promises.readdir(path.join(this.lang, this.defaultLocale));
+        const files = await fs.promises.readdir(path.join(this.lang, this.options.defaultLocale));
         for (const file of files) {
-            const filepath = path.join(this.lang, this.defaultLocale, file);
+            const filepath = path.join(this.lang, this.options.defaultLocale, file);
             const content = await this.readLocaleFile(filepath);
             
             this.strings.default[file] = content;
@@ -99,11 +195,11 @@ class Localizer {
     /**
      * Read a PHP locale file
      * @param {string} filepath 
-     * @returns {object}
+     * @returns {LocaleIndex}
      */
-    async readLocaleFile(filepath) {
+    async readLocaleFile(filepath: string): Promise<LocaleIndex> {
         const result = cp.execSync(`php -r "echo json_encode(require '${filepath.replace(/\\/g, '\\\\')}');"`);
-        return JSON.parse(result.toString());
+        return JSON.parse(result.toString()) as LocaleIndex;
     }
 
     /**
@@ -112,7 +208,7 @@ class Localizer {
      * @param {string} prefix
      * @param {object} object
      */
-    prepareIndex(data, prefix, object) {
+    prepareIndex(data: LocaleIndex, prefix: string, object: FlatLocaleIndex) {
         for (const [key, val] of Object.entries(data)) {
             if (typeof val == 'string') {
                 object[`${prefix}${key}`] = val;
@@ -126,24 +222,13 @@ class Localizer {
      * Read Mall source files
      */
     async readSources() {
-        const files = await glob([
-            '**/*.php',
-            '**/*.htm',
-            '**/*.html',
-            '**/*.yaml',
-            '!assets/**/*',
-            '!lang/**/*',
-            '!node_modules/**/*',
-            '!tests/**/*',
-            '!updates/*', // Keep subdirectories
-            '!vendor/**/*',
-        ], {
-            cwd: this.base,
+        const files = await glob(this.options.files, {
+            cwd: this.root,
         });
 
         // Read File
-        const basicRegex = new RegExp('offline.mall::', 'gi');
-        const localeRegex = new RegExp('offline.mall::([a-z\.\_\-]+)', 'gi');
+        const basicRegex = new RegExp(`${this.options.namespace}::`, 'gi');
+        const localeRegex = new RegExp(`${this.options.namespace}::([a-z\.\_\-]+)`, 'gi');
         for (const file of files) {
             const content = (await fs.promises.readFile(file, 'utf-8')).replace(/\r\n|\r/g, '\n');
             if (!basicRegex.test(content)) {
@@ -154,8 +239,8 @@ class Localizer {
             while((result = localeRegex.exec(content)) !== null) {
                 let [_, fullPath] = result[0].split('::');
 
-                let stringPath = fullPath.split('.');
-                let fileName = stringPath.shift() + '.php';
+                let stringPath: string | string[] = fullPath.split('.');
+                let fileName: string = stringPath.shift() + '.php';
                 stringPath = stringPath.join('.');
 
                 if (!(fullPath in this.sources)) {
@@ -172,12 +257,13 @@ class Localizer {
                     content.indexOf('\n', content.indexOf('\n', result.index) + 2) ?? content.length
                 );
                 let strip = excerpt.split('\n').reduce((prev, curr) => {
-                    let num = curr.match(/^\s*/)[0].length;
+                    let temp = (curr || '').match(/^\s*/);
+                    let num = temp ? temp[0].length : 0;
                     return num < prev ? num : prev;
                 }, Infinity);
                 excerpt = excerpt.split('\n').map(line => line.slice(strip)).join('\n');
 
-                let toFocus = `offline.mall::${fullPath}`;
+                let toFocus = `${this.options.namespace}::${fullPath}`;
                 let excerptFocus = [excerpt.indexOf(toFocus), excerpt.indexOf(toFocus)+toFocus.length];
 
                 this.sources[fullPath].push({
@@ -202,12 +288,13 @@ class Localizer {
      * @param {string|null} restrict
      * @returns {object}
      */
-    async stats(restrict = null) {
-        const stats = {};
+    async stats(restrict: string | null = null) {
+        const stats: any = {};
+
         for (const locale of restrict ? [restrict.toLowerCase()] : this.locales) {
             let lines = 0;
             let translated = 0;
-            let files = {};
+            let files: any = {};
 
             if (!(locale in this.strings)) {
                 if (this.locales.includes(locale)) {
@@ -261,10 +348,10 @@ class Localizer {
 
     /**
      * Fetch translation strings
-     * @param {string|null} locale
+     * @param {string} locale
      * @returns {object}
      */
-    async fetchStrings(locale) {
+    async fetchStrings(locale: string) {
         if (!(locale in this.strings)) {
             if (this.locales.includes(locale)) {
                 this.locales.push(locale);
@@ -272,7 +359,7 @@ class Localizer {
             this.strings[locale] = {};
         }
 
-        const result = {};
+        const result: any = {};
         for (const [file, entries] of Object.entries(this.index)) {
             if (!(file in this.strings[locale])) {
                 const filepath = path.join(this.lang, locale, file);
@@ -290,7 +377,7 @@ class Localizer {
             result[file].status = {};
             result[file].references = {};
 
-            let index = {};
+            let index: any = {};
             this.prepareIndex(this.strings[locale][file], '', index);
             for (const [key, val] of Object.entries(entries)) {
                 result[file][locale][key] = index[key] ?? '';
@@ -313,13 +400,13 @@ class Localizer {
 
     /**
      * Update translation string
-     * @param {string|null} locale
-     * @param {string|null} file
-     * @param {string|null} key
-     * @param {string|null} string
+     * @param {string} locale
+     * @param {string} file
+     * @param {string} key
+     * @param {string} string
      * @returns {object}
      */
-    async updateString(locale, file, key, string) {
+    async updateString(locale: string, file: string, key: string, string: string) {
         if (!(file in this.strings[locale])) {
             const filepath = path.join(this.lang, locale, file);
             if (fs.existsSync(filepath)) {
@@ -327,12 +414,11 @@ class Localizer {
                 this.strings[locale][file] = content;
             } else {
                 this.strings[locale][file] = {};
-                empty = true;
             }
         }
 
         // Index
-        const localeIndex = {};
+        const localeIndex: any = {};
         this.prepareIndex(this.strings[locale][file], '', localeIndex);
         localeIndex[key] = string;
 
@@ -365,8 +451,8 @@ class Localizer {
      * Unpack Index
      * @param {*} index 
      */
-    unpackIndex(index) {
-        const result = {};
+    unpackIndex(index: FlatLocaleIndex): LocaleIndex {
+        const result: any = {};
         for (const [key, val] of Object.entries({...index})) {
             if (val.trim().length == 0 || val === null) {
                 continue; // Skip Empty Values
@@ -393,12 +479,12 @@ class Localizer {
      * Create PHP Locale File
      * @param {object} index 
      */
-    createPHPFile(index) {
-        const content = [];
+    createPHPFile(index: any) {
+        const content: string[] = [];
         content.push('<?php');
         content.push('return [');
 
-        function recursive(index, content, prefix, depth) {
+        function recursive(index: any, content: string[], prefix: string, depth: number) {
             for (const [key, val] of Object.entries(index)) {
                 let fullPath = `${prefix}${key}`;
                 if (typeof val == 'string') {

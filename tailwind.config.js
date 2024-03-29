@@ -4,8 +4,8 @@ import Colors from 'tailwindcss/colors';
 /** @type {import('tailwindcss').Config} */
 export default {
     content: [
-        './src/localize/client/index.html',
-        './src/localize/client/**/*.vue'
+        './src/client/index.html',
+        './src/client/**/*.vue'
     ],
     darkMode: 'class',
     theme: {

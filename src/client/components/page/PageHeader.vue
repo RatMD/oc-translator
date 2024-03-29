@@ -1,7 +1,7 @@
 <template>
     <div class="page-header">
         <div class="header-title">
-            Offline/Mall Translator
+            {{ appStore.name }}
         </div>
         <div class="header-target">
             <div class="locale-selector">

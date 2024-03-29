@@ -8,6 +8,16 @@ export interface AppStates {
      * Color Mode
      */
     mode: ColorModes;
+
+    /**
+     * Instance Name
+     */
+    name: string;
+
+    /**
+     * Instance Logo
+     */
+    logo: string;
 }
 
 export const useAppStore = defineStore('app', {
@@ -15,8 +25,20 @@ export const useAppStore = defineStore('app', {
      * Initial States
      */
     state: (): AppStates => {
+        let name = 'Project Name';
+        if (document.head.querySelector('meta[name="oct-name"]')) {
+            name = (document.head.querySelector('meta[name="oct-name"]') as HTMLMetaElement).content;
+        }
+
+        let logo = 'Project Name';
+        if (document.head.querySelector('meta[name="oct-logo"]')) {
+            logo = (document.head.querySelector('meta[name="oct-logo"]') as HTMLMetaElement).content;
+        }
+
         return {
-            mode: localStorage.getItem('oct:color-mode') == 'dark' ? 'dark' : 'light'
+            mode: localStorage.getItem('oct:color-mode') == 'dark' ? 'dark' : 'light',
+            name, 
+            logo
         };
     },
 

@@ -1,0 +1,58 @@
+{
+    "name": "@rat.md/oc-translator",
+    "homepage": "https://github.com/RatMD/oc-translator",
+    "description": "OctoberCMS Translator Tool, especially designed for OFFLINE.Mall.",
+    "private": true,
+    "keywords": [
+        "october",
+        "cms",
+        "e-commerce",
+        "shop",
+        "plugin"
+    ],
+    "license": "MIT",
+    "author": "Sam <sam@rat.md> (https://rat.md)",
+    "type": "module",
+    "scripts": {
+        "start": "run-p serve dev",
+        "dev": "vite",
+        "serve": "tsx src/server/index.ts --mode=dev",
+        "build": "run-p build:client build:server",
+        "build:client": "vite build -- --env=prod",
+        "build:server": "rollup -c rollup.config.js"
+    },
+    "dependencies": {
+        "@fastify/one-line-logger": "^1.2.0",
+        "@fastify/static": "^7.0.2",
+        "fast-glob": "^3.3.2",
+        "fastify": "^4.26.2"
+    },
+    "devDependencies": {
+        "@floating-ui/vue": "^1.0.6",
+        "@rollup/plugin-commonjs": "^25.0.7",
+        "@rollup/plugin-json": "^6.1.0",
+        "@rollup/plugin-node-resolve": "^15.2.3",
+        "@rollup/plugin-typescript": "^11.1.6",
+        "@tsconfig/node20": "^20.1.2",
+        "@types/node": "^20.11.10",
+        "@vitejs/plugin-vue": "^5.0.3",
+        "@vue/tsconfig": "^0.5.1",
+        "autoprefixer": "^10.4.19",
+        "lucide-vue-next": "^0.354.0",
+        "npm-run-all2": "^6.1.2",
+        "pinia": "^2.1.7",
+        "postcss": "^8.4.38",
+        "postcss-import": "^16.1.0",
+        "rollup": "^4.13.2",
+        "shiki": "^1.1.7",
+        "smooth-scrollbar": "^8.8.4",
+        "tailwindcss": "^3.4.3",
+        "tslib": "^2.6.2",
+        "tsx": "^4.7.1",
+        "typescript": "^5.4.3",
+        "vite": "^5.1.5",
+        "vue": "^3.4.21",
+        "vue-router": "^4.3.0",
+        "vue-tsc": "^1.8.27"
+    }
+}

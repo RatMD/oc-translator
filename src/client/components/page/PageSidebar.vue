@@ -1,7 +1,7 @@
 <template>
     <nav>
         <div class="page-logo">
-            <PageLogo width="48" height="48" />
+            <img :src="appStore.logo" alt="logo" />
         </div>
 
         <ul class="page-navi">
@@ -41,7 +41,10 @@
 <script lang="ts" setup>
 import { BadgeAlert, CircleGauge, Github, ScanText } from 'lucide-vue-next';
 import { RouterLink } from 'vue-router';
-import PageLogo from '@/components/page/PageLogo.vue';
+import { useAppStore } from '@/stores/app';
+
+// Stores
+const appStore = useAppStore();
 </script>
 
 <style scoped>
@@ -51,6 +54,10 @@ nav {
 
 .page-logo {
     @apply flex shrink-0 grow-0 basis-16 items-center justify-center;
+
+    & img {
+        @apply w-12 h-12;
+    }
 }
 
 .page-navi {
