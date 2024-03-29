@@ -1,11 +1,8 @@
 {
     "name": "@ratmd/oc-translator",
+    "version": "0.1.0",
     "homepage": "https://github.com/RatMD/oc-translator",
     "description": "OctoberCMS Translator Tool, especially designed for OFFLINE.Mall.",
-    "repository": {
-        "url": "https://github.com/RatMD/oc-translator"
-    },
-    "private": false,
     "keywords": [
         "october",
         "cms",
@@ -16,6 +13,19 @@
     "license": "MIT",
     "author": "Sam <sam@rat.md> (https://rat.md)",
     "type": "module",
+    "private": false,
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/RatMD/oc-translator"
+    },
+    "bin": {
+        "translator": "./bin/translator.js"
+    },
+    "files": [
+        "bin",
+        "dist",
+        "CHANGELOG.md"
+    ],
     "scripts": {
         "start": "run-p serve dev",
         "dev": "vite",
