@@ -22,7 +22,8 @@
         "serve": "tsx src/server/index.ts --mode=dev",
         "build": "run-p build:client build:server",
         "build:client": "vite build -- --env=prod",
-        "build:server": "rollup -c rollup.config.js"
+        "build:server": "rollup -c rollup.config.js",
+        "prepublishOnly": "run-p build"
     },
     "dependencies": {
         "@fastify/one-line-logger": "^1.2.0",
